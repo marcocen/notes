@@ -1,5 +1,3 @@
-[TOC]
-
 # Introduccion
 El número de telefonos celulares y dispositivos móviles es cada vez más grande. Estos dispositivos prometen acceso a internet en cualquier momento y lugar.
 
