@@ -119,7 +119,71 @@ El nodo maestro puede transmitir en los slots impares y los esclavos sólo en lo
 
 Si un dispositivo de una piconet (master o slave) se conecta como esclavo a otra piconet se forma una scatternet. El nodo que pertenece a las dos redes actúa como relay entre las mismas; sin embargo, el protocolo bluetooth no maneja este relay por lo cual el software del dispositivo debe administrarlo.
 
-## Movilidad
+## Movildad
 
 En un entorno de red el hogar permanente de un nodo móvil es denominada **Home Network ** y la entidad que realiza las funciones de administración de movilidad en nombre del nodo es el **Home Agent**. La red en la cual se encuentra residiendo actualmente el nodo es denominada **Foreign Network** y el equivalente al **Home Agent** es el **Foreign Agent**. Finalmente, el actor que desea comunicarse con el nodo es denominado **Correspondent**.
 
+### Direccionamiento
+
+Es deseable que un nodo móvil mantenga su dirección cuando se mueve de una red a otra. Consideremos entonces el foreign agent: éste crea una dirección nueva para el nodo llamada **Care-of-address** (COA), ubicada en la red del FA. Es así que el nodo tiene dos direcciones: 
+
+- Permanent address: su dirección original en su  home network.
+- Foreign o care of adress: la que tiene en la foreign network. Esta puede ser una nueva dirección en la red o ser la misma del fireign agent; en general se utiliza la segunda opción.
+
+### Routing
+
+Hay dos acercamientos al tema del enrutamiento en redes móviles
+
+#### Routing Indirecto
+
+Este tipo de routing es totalmente transparente para el correspondent ya que los que se encargan de la complejidad del proceso son los agents (home y foreign).
+
+1. El correspondent envía el datagrama a la dirección que conoce del nodo (a su permanent address).
+2. El home agent recibe ese datagrama y ve que se ha registrado una COA para ese nodo. Encapsula el datagrama en uno nuevo que tiene como destino la COA del nodo y lo envía al Foreign Agent.
+3. El FA recibe el datagrama que tiene como destino la COA, desencapsula el mismo y se lo envía al nodo móvil.
+4. El nodo móvil responde directamente al correspondent.
+
+En este modo el routing es totalmente transparente tanto para el correspondent como para el nodo móvil. De todos modos varias funcionalidades se van a tener que agregar a la capa de red:
+
+- Un protocolo entre el nodo móvil y en foreign agent: para registrarse con el FA cuando se agrega a la foreign network y para desregistrarse cuando se va.
+- un procololo entre los agents: para registrar la COA con el homa agent. No es necesario desregistrar la COA porque si cambia la misma, el nuevo FA va a registrar ésta en el home agent.
+- un protocolo de encapsulamiento de datagramas.
+- un protocolo de desencapsulamiento de datagramas.
+
+El routing indirecto tiene el problema del routing triangular: los datagramas tienen que ir hasta el home agent y despues hasta el foreign agent aunque haya una ruta mejor entre el correspondent y el nodo móvil.
+
+#### Routing Directo
+
+El routing directo no tiene el problema del routing triangular pero agrega complejidad:
+
+- Un protocolo de localización de usuario movil: para que el correspondent pueda hacer un query y obtener la COA del nodo móvil.
+- Cómo se va a comportar la red cuando un nodo se mueva de una foreign network a otra?
+
+El primer punto es simplemente un tema de especificación e implementación.
+
+El segundo punto tiene dos posibles soluciones:
+
+- implementar un protocolo para notificar al correspondent del cambio de COA.
+- Si el nodo se mueve, el correspondent seguirá enviando los datagramas al foreign agent oficial. Pero el nodo móvil se va a haber movido a otra FN y registrado ese cambio con el FA original; es así que el FA1 va a redireccionar los paquetes que le sigan llegando al nodo a su nueva COA (cuando le llegue un paquete encapsulado lo va a reencapsular y enviar al nuevo FA).
+
+## IP Movil
+
+El estandar IP Movil (definido primariamente en el RFC 5944) consiste de tres partes principales:
+
+- Agent Discovery
+- Registro con el Home Agent
+- Routing Indirecto de Datagramas
+
+### Agent Discovery
+
+Un nodo IP móvil que se mueve a una nueva red debe descubrir la identidad del home o foreign agent de la red. Hay dos formas en las que puede lograrse esto:
+
+- Agent Advertisement: Un agente publica sus servicios usando una extensión del protocolo de descubrimiento de routers. Envía mensajes ICMP periodicos con un tipo 9 y la dirección del router para que el nodo la aprenda.
+- Agent Solicitation: Un nodo puede pedir información acerca de un agente simplemente enviando un mensaje ICMP de tipo 10. Un agente que reciba ese mensaje respondera unicast con la información adecuada.
+
+### Registro con el Home Agent
+
+1. Un nodo cuando recibe un mensaje envía un mensaje de registro al foreign agent (datagrama UDP al puerto 434, la COA publicada, la dirección del HA, la permanent address, un tiempo de vida y un numero de identificación de registro de 64bits).
+2. El FA recibe el mensaje y guarda la dirección permanente. Envía un mensaje de registro al Home agent (UDP al 434 con COA, HA, PA formato de encapsulamiento, tiempo de vida e id de registro).
+3. El Home agent recibe el pedido de registro y chequea autenticidad y correctitud. Asocia la CIA a la PA y envía una respuesta conteniendo el HA, PA, tiempo de vida real e id de registro.
+4. El FA recibe la respuesta y se la reenvia al nodo.
